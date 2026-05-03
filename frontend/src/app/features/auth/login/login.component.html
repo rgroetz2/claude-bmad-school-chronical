@@ -1,0 +1,87 @@
+<div class="page-center">
+  <mat-card class="login-card">
+    <mat-card-header>
+      <div class="login-header">
+        <img src="assets/logo.svg" alt="SchoolCronicle" class="logo" />
+        <mat-card-title>SchoolCronicle</mat-card-title>
+        <mat-card-subtitle>Bitte melden Sie sich an</mat-card-subtitle>
+      </div>
+    </mat-card-header>
+
+    <mat-card-content>
+      <form [formGroup]="form" (ngSubmit)="onSubmit()" novalidate>
+
+        <!-- Error banner -->
+        @if (errorMessage()) {
+          <div class="error-banner" role="alert">
+            <mat-icon>error_outline</mat-icon>
+            <span>{{ errorMessage() }}</span>
+          </div>
+        }
+
+        <!-- Username -->
+        <mat-form-field appearance="outline" class="full-width">
+          <mat-label>Benutzername</mat-label>
+          <input
+            matInput
+            formControlName="username"
+            type="text"
+            autocomplete="username"
+            placeholder="Benutzername eingeben"
+            [attr.aria-describedby]="usernameControl.invalid && usernameControl.touched ? 'username-error' : null"
+          />
+          <mat-icon matPrefix>person</mat-icon>
+          @if (usernameControl.hasError('required') && usernameControl.touched) {
+            <mat-error id="username-error">Benutzername ist erforderlich.</mat-error>
+          }
+          @if (usernameControl.hasError('maxlength')) {
+            <mat-error id="username-error">Benutzername darf maximal 100 Zeichen lang sein.</mat-error>
+          }
+        </mat-form-field>
+
+        <!-- Password -->
+        <mat-form-field appearance="outline" class="full-width">
+          <mat-label>Passwort</mat-label>
+          <input
+            matInput
+            formControlName="password"
+            [type]="passwordVisible() ? 'text' : 'password'"
+            autocomplete="current-password"
+            placeholder="Passwort eingeben"
+          />
+          <mat-icon matPrefix>lock</mat-icon>
+          <button
+            mat-icon-button
+            matSuffix
+            type="button"
+            (click)="togglePasswordVisibility()"
+            [attr.aria-label]="passwordVisible() ? 'Passwort verbergen' : 'Passwort anzeigen'"
+          >
+            <mat-icon>{{ passwordVisible() ? 'visibility_off' : 'visibility' }}</mat-icon>
+          </button>
+          @if (passwordControl.hasError('required') && passwordControl.touched) {
+            <mat-error>Passwort ist erforderlich.</mat-error>
+          }
+        </mat-form-field>
+
+        <!-- Submit -->
+        <button
+          mat-raised-button
+          color="primary"
+          type="submit"
+          class="full-width submit-btn"
+          [disabled]="form.invalid || loading()"
+          aria-label="Anmelden"
+        >
+          @if (loading()) {
+            <mat-spinner diameter="20"></mat-spinner>
+            <span>Anmelden ...</span>
+          } @else {
+            <span>Anmelden</span>
+          }
+        </button>
+
+      </form>
+    </mat-card-content>
+  </mat-card>
+</div>
