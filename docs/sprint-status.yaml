@@ -25,7 +25,7 @@ sprints:
     end_date: "2026-05-15"
     capacity_points: 30
     committed_points: 18
-    completed_points: 5
+    completed_points: 10
     status: "in_progress"
     goal: "A working, secure application shell — developers can log in, admins can manage accounts, the full local Docker stack is running."
     stories:
@@ -47,8 +47,10 @@ sprints:
         title: "User Login with JWT Authentication"
         points: 5
         priority: "must_have"
-        status: "not_started"
-        assigned_to: null
+        status: "completed"
+        assigned_to: rudolfgroetz
+        completed_date: "2026-05-03"
+        branch: "feature/STORY-003-user-login-jwt"
       - story_id: "STORY-004"
         title: "Password Reset via Email"
         points: 3
