@@ -40,3 +40,22 @@ body {
   min-height: 100vh;
   padding: 16px;
 }
+
+// Global snack-bar colours
+.snack-success {
+  background-color: #2e7d32 !important;
+  color: #ffffff !important;
+
+  .mat-mdc-button.mat-mdc-snack-bar-action {
+    color: #a5d6a7 !important;
+  }
+}
+
+.snack-error {
+  background-color: #c62828 !important;
+  color: #ffffff !important;
+
+  .mat-mdc-button.mat-mdc-snack-bar-action {
+    color: #ef9a9a !important;
+  }
+}
