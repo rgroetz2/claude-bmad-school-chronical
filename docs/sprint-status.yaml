@@ -1,7 +1,7 @@
 version: "6.0.0"
 project_name: "schoolCronical"
 project_level: 3
-current_sprint: 1
+current_sprint: 2
 sprint_plan_path: "docs/sprint-plan-schoolCronical-2026-05-02.md"
 
 team:
@@ -11,13 +11,13 @@ team:
   capacity_per_sprint: 30
 
 velocity:
-  sprint_1: null
+  sprint_1: 18
   sprint_2: null
   sprint_3: null
   sprint_4: null
   sprint_5: null
   sprint_6: null
-  rolling_average: null
+  rolling_average: 18
 
 sprints:
   - sprint_number: 1
@@ -25,8 +25,9 @@ sprints:
     end_date: "2026-05-15"
     capacity_points: 30
     committed_points: 18
-    completed_points: 13
-    status: "in_progress"
+    completed_points: 18
+    status: "completed"
+    velocity: 18
     goal: "A working, secure application shell — developers can log in, admins can manage accounts, the full local Docker stack is running."
     stories:
       - story_id: "STORY-001"
@@ -63,8 +64,10 @@ sprints:
         title: "Admin Account Management"
         points: 5
         priority: "should_have"
-        status: "not_started"
-        assigned_to: null
+        status: "completed"
+        assigned_to: rudolfgroetz
+        completed_date: "2026-05-03"
+        branch: "feature/STORY-005-admin-account-management"
 
   - sprint_number: 2
     start_date: "2026-05-18"
