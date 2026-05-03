@@ -2,10 +2,12 @@
 
 **Date:** 2026-05-02
 **Architect:** rudolfgroetz
-**Version:** 1.0
+**Version:** 1.1
 **Project Type:** Web Application
 **Project Level:** 3 (Complex Integration, 12–40 stories)
-**Status:** Draft
+**Status:** Updated — Express rewrite (2026-05-03)
+
+> **v1.1 Change Note:** Backend migrated from NestJS + TypeORM to **Express + raw pg** (node-pg-migrate for migrations). No ORM; all SQL written manually with parameterised queries. JWT handled via `jsonwebtoken`; validation via `express-validator`; rate limiting via `express-rate-limit`. All API contracts and the Angular frontend remain unchanged.
 
 ---
 
@@ -66,9 +68,9 @@ A single deployable backend unit with clear internal module boundaries. Microser
 │                   Local Network                      │
 │                                                      │
 │  ┌──────────────┐        ┌──────────────────────┐   │
-│  │   Angular     │ HTTPS  │     NestJS API        │   │
-│  │   Frontend    │◄──────►│   (Modular Monolith)  │   │
-│  │  (port 4200)  │        │     (port 3000)        │   │
+│  │   Angular     │ HTTPS  │    Express API        │   │
+│  │   Frontend    │◄──────►│  (Modular Monolith)   │   │
+│  │  (port 4200)  │        │    (port 3000)         │   │
 │  └──────────────┘        └──────────┬───────────┘   │
 │                                     │                │
 │              ┌──────────────────────┼──────────┐     │
@@ -89,11 +91,11 @@ A single deployable backend unit with clear internal module boundaries. Microser
 
 **Data flow:**
 1. Browser → Nginx (TLS termination, reverse proxy)
-2. Nginx → Angular SPA (static files) or → NestJS API
-3. NestJS → PostgreSQL (structured data)
-4. NestJS → MinIO (image files, streamed)
-5. NestJS → Redis (sessions, rate limiting, job state)
-6. NestJS → Local SMTP (password reset emails)
+2. Nginx → Angular SPA (static files) or → Express API
+3. Express → PostgreSQL (structured data, raw pg queries)
+4. Express → MinIO (image files, streamed)
+5. Express → Redis (sessions, rate limiting, job state)
+6. Express → Local SMTP (password reset emails)
 
 ---
 
@@ -124,28 +126,35 @@ A single deployable backend unit with clear internal module boundaries. Microser
 
 ### Backend
 
-**Choice:** NestJS (Node.js 20 LTS) with TypeScript
+**Choice:** Express 4 (Node.js 20 LTS) with TypeScript
 
 **Rationale:**
-- Modular architecture by design — maps directly to the 9 domain modules
-- Decorator-based Guards, Pipes, and Interceptors for RBAC, validation, and logging (FR-001, FR-020, NFR-002)
-- Excellent TypeORM integration for PostgreSQL
-- Strong validation via `class-validator` — enforces FRs at API boundary
-- Active community, mature ecosystem, good documentation
+- Lightweight, minimal ceremony — no decorator magic or DI framework overhead
+- Full control over middleware order, error handling, and routing
+- Raw `pg` (node-postgres) for direct SQL — no ORM impedance mismatch, no hidden queries
+- `jsonwebtoken` for RS256/HS256 JWT sign/verify — explicit, auditable
+- `express-validator` for request validation — composable, chain-based validation rules
+- `node-pg-migrate` for schema migrations — JS-native, no ORM coupling
 
 **Trade-offs:**
-- ✓ Structure enforces clean architecture without team discipline overhead
-- ✗ Slightly more ceremony than Express for simple endpoints; worth it at Level 3
+- ✓ No framework magic — every layer is explicit and easy to trace
+- ✓ Lighter runtime footprint than NestJS; no reflection metadata overhead
+- ✗ No built-in DI; services are plain module exports imported directly
+- ✗ More boilerplate per route than NestJS controllers
 
 **Key Libraries:**
-- `@nestjs/jwt` + `@nestjs/passport` — JWT auth (FR-001, FR-002)
-- `TypeORM` — ORM with migration support
-- `class-validator` + `class-transformer` — DTO validation (FR-019)
-- `@nestjs/throttler` — Rate limiting (NFR-002)
-- `multer` + `minio` SDK — Image upload pipeline (FR-008)
+- `jsonwebtoken` — manual RS256/HS256 JWT sign/verify (FR-001, FR-002)
+- `pg` (node-postgres) — raw SQL with `Pool`; parameterised queries
+- `node-pg-migrate` — schema migration runner (JS format)
+- `express-validator` — body/param validation chains (FR-019)
+- `express-rate-limit` — per-route rate limiters (NFR-002)
+- `ioredis` — Redis client with `lazyConnect` mode
+- `bcrypt` — password hashing, cost factor 12
+- `nodemailer` + `handlebars` — email templates (FR-002)
 - `helmet` — Security headers (FR-020)
+- `cookie-parser` — HttpOnly refresh token cookies
+- `multer` + MinIO SDK — Image upload pipeline (FR-008)
 - `pdfkit` or `puppeteer` — Print-ready export generation (FR-014)
-- `winston` — Structured logging
 
 ---
 
@@ -156,18 +165,20 @@ A single deployable backend unit with clear internal module boundaries. Microser
 **Rationale:**
 - Relational model fits structured contributions, persons, schools with foreign key integrity
 - Strong JSON/JSONB support for flexible export data and audit logs
-- Excellent TypeORM support with migrations
+- Raw `pg.Pool` with parameterised queries — full SQL control, no ORM abstraction layer
 - GDPR: row-level audit columns (`created_at`, `updated_at`, `deleted_at` soft-delete) are straightforward
 - Proven reliability for self-hosted deployments
 
 **Trade-offs:**
 - ✓ ACID guarantees critical for submission state machine (FR-010)
-- ✗ Schema migrations require care; TypeORM migrations handle this
+- ✓ No ORM — all SQL explicit, easily auditable for security and correctness
+- ✗ More verbose than ORM for dynamic queries; handled via programmatic parameter index counters
 
 **Key Design Decisions:**
 - Soft deletes (`deleted_at`) on all personal data tables for GDPR (FR-012)
-- Audit columns on all tables (`created_at`, `updated_at`, `created_by`)
-- UUID primary keys (not sequential integers) to avoid enumeration attacks
+- Audit columns on all tables (`created_at`, `updated_at`)
+- UUID primary keys (`gen_random_uuid()`) to avoid enumeration attacks
+- `node-pg-migrate` JS-format migrations; all schema changes version-controlled
 
 ---
 
@@ -313,31 +324,34 @@ src/app/
 
 ---
 
-### Component: NestJS API (Modular Monolith)
+### Component: Express API (Modular Monolith)
 
 **Purpose:** All business logic, data access, file orchestration
 
-**Modules:**
+**Route groups (files under `src/routes/`):**
 
-| Module | Responsibility | Key FRs |
-|--------|---------------|---------|
-| `AuthModule` | JWT login, refresh, logout, password reset | FR-001, FR-002 |
-| `UsersModule` | Account CRUD, role assignment | FR-015 |
-| `SchoolsModule` | School registry CRUD | FR-003 |
-| `PersonsModule` | Person registry CRUD, soft delete | FR-004 |
-| `ContributionsModule` | Contribution CRUD, state machine, validation | FR-005–FR-007, FR-010, FR-016, FR-017, FR-019 |
-| `MediaModule` | Image upload, MinIO integration, format/size validation | FR-008, FR-009 |
-| `GdprModule` | Consent record storage, data subject deletion orchestration | FR-011, FR-012 |
-| `ExportModule` | Structured export generation, print-ready PDF output | FR-013, FR-014 |
-| `AdminModule` | Appointment type management, system config | FR-017 |
+| Route file | Responsibility | Key FRs |
+|------------|---------------|---------|
+| `auth.routes.ts` | JWT login, refresh, logout, password reset | FR-001, FR-002 |
+| `users.routes.ts` | Account CRUD, role assignment | FR-015 |
+| `schools.routes.ts` | School registry CRUD | FR-003 |
+| `persons.routes.ts` | Person registry CRUD, soft delete | FR-004 |
+| `contributions.routes.ts` | Contribution CRUD, state machine, validation | FR-005–FR-007, FR-010, FR-016, FR-017, FR-019 |
+| `media.routes.ts` | Image upload, MinIO integration, format/size validation | FR-008, FR-009 |
+| `gdpr.routes.ts` | Consent record storage, data subject deletion orchestration | FR-011, FR-012 |
+| `export.routes.ts` | Structured export generation, print-ready PDF output | FR-013, FR-014 |
+| `admin.routes.ts` | Appointment type management, system config | FR-017 |
 
-**Cross-cutting concerns (NestJS interceptors/guards):**
-- `JwtAuthGuard` — protects all authenticated routes
-- `RolesGuard` — RBAC enforcement (Teacher, Coordinator, Admin)
-- `ValidationPipe` — global DTO validation via class-validator
-- `ThrottlerGuard` — rate limiting on auth endpoints
-- `LoggingInterceptor` — structured request/response logging
-- `AuditInterceptor` — writes audit log for state-changing operations
+**Cross-cutting middleware (files under `src/middleware/`):**
+- `authenticate` — verifies Bearer JWT + re-validates `is_active` from DB on every request
+- `requireRole(role)` — RBAC factory middleware using role hierarchy (teacher < coordinator < admin)
+- `handleValidation` — collects `express-validator` errors, returns 400 with error array
+- `errorHandler` — global Express error handler; maps `AppError` to HTTP status codes
+- `express-rate-limit` — per-route limiters (5/min login, 3/min password reset)
+
+**Service layer (files under `src/services/`):**
+- Plain exported objects (no DI framework); dependencies imported directly
+- `AuthService`, `UsersService`, `PasswordResetService`
 
 ---
 
@@ -608,10 +622,10 @@ Guards applied at controller level via NestJS `@Roles()` decorator + `RolesGuard
 
 **Solution:**
 - Passwords hashed with **bcrypt** (cost factor 12 minimum)
-- JWT access tokens: 15-minute TTL
-- JWT refresh tokens: 7-day TTL, stored in Redis (revocable on logout)
-- RBAC enforced server-side via NestJS Guards — not just UI routing
-- Brute-force: `ThrottlerGuard` limits auth endpoints to 5 requests/minute per IP
+- JWT access tokens: 15-minute TTL, signed with RS256 (or HS256 in dev)
+- JWT refresh tokens: 7-day TTL, stored in Redis (revocable on logout/all-session purge)
+- RBAC enforced server-side via `requireRole()` middleware — not just UI routing
+- Brute-force: `express-rate-limit` limits auth endpoints to 5 req/min per IP
 - HTTPS-only via Nginx; `helmet` middleware sets security headers
 - CSRF: SPA uses JWT Bearer header (not cookies for access token) — mitigates CSRF by design
 
@@ -802,9 +816,9 @@ Permissions-Policy: camera=(), microphone=()
 
 ### Performance Optimisation
 
-- **N+1 prevention:** TypeORM QueryBuilder with explicit JOINs for contribution lists
+- **N+1 prevention:** Raw SQL JOINs in service layer; contribution lists fetched with a single query
 - **Pagination:** All list endpoints cursor-paginated (default limit: 25)
-- **Image serving:** Pre-signed MinIO URLs (15-minute expiry) — NestJS not in image serving path
+- **Image serving:** Pre-signed MinIO URLs (15-minute expiry) — Express not in image serving path
 - **Export:** Async job pattern — client polls `/export/:jobId/status` rather than waiting on HTTP
 
 ### Caching Strategy
@@ -870,31 +884,34 @@ All containers: `restart: unless-stopped` in Docker Compose.
 
 ```
 schoolchronicle/
-├── frontend/                # Angular application
+├── frontend/                   # Angular 18 standalone application
 │   ├── src/app/
-│   │   ├── auth/
-│   │   ├── contributions/
-│   │   ├── registry/
-│   │   ├── export/
-│   │   ├── admin/
+│   │   ├── core/
+│   │   │   ├── auth/           # AuthService (signals), interceptor, guards
+│   │   │   └── models/
+│   │   ├── features/
+│   │   │   ├── auth/           # login, forgot-password, reset-password
+│   │   │   ├── contributions/
+│   │   │   ├── registry/
+│   │   │   ├── export/
+│   │   │   └── admin/
 │   │   └── shared/
 │   └── Dockerfile
-├── backend/                 # NestJS application
+├── backend/                    # Express application (TypeScript)
 │   ├── src/
-│   │   ├── auth/
-│   │   ├── users/
-│   │   ├── schools/
-│   │   ├── persons/
-│   │   ├── contributions/
-│   │   ├── media/
-│   │   ├── gdpr/
-│   │   ├── export/
-│   │   └── admin/
+│   │   ├── config/             # env.ts, db.ts (pg Pool), redis.ts, mailer.ts
+│   │   ├── middleware/         # auth, roles, validate, error
+│   │   ├── routes/             # auth, users, schools, persons, contributions, …
+│   │   ├── services/           # AuthService, UsersService, PasswordResetService, …
+│   │   ├── utils/              # jwt.util.ts, password.util.ts
+│   │   ├── migrations/         # node-pg-migrate JS migration files
+│   │   ├── app.ts
+│   │   └── server.ts
 │   └── Dockerfile
 ├── nginx/
 │   └── nginx.conf
 ├── docker-compose.yml
-├── docker-compose.dev.yml   # Dev overrides (hot reload, exposed ports)
+├── docker-compose.dev.yml      # Dev overrides (hot reload, exposed ports)
 └── docs/
 ```
 
@@ -927,7 +944,7 @@ On merge to main:
 
 | Layer | Tool | Target Coverage |
 |-------|------|-----------------|
-| Backend unit | Jest | 70% business logic |
+| Backend unit | Jest + ts-jest | 70% service/utility logic |
 | Backend integration | Supertest | All API endpoints (happy path + key errors) |
 | Frontend unit | Jasmine/Karma | Form validation, service logic |
 | E2E | Playwright | Critical user journeys (login, submit contribution, export) |
@@ -942,33 +959,33 @@ On merge to main:
 
 | FR | Description | Component(s) |
 |----|-------------|-------------|
-| FR-001 | User Login | Angular AuthModule, NestJS AuthModule, Redis |
-| FR-002 | Password Reset | Angular AuthModule, NestJS AuthModule, SMTP |
-| FR-003 | School Management | Angular RegistryModule, NestJS SchoolsModule, PostgreSQL |
-| FR-004 | Person Management | Angular RegistryModule, NestJS PersonsModule, PostgreSQL |
-| FR-005 | Contribution Creation | Angular ContributionsModule, NestJS ContributionsModule, PostgreSQL |
-| FR-006 | Contribution Editing | Angular ContributionsModule, NestJS ContributionsModule |
-| FR-007 | Contribution List & Status | Angular DashboardModule, NestJS ContributionsModule |
-| FR-008 | Image Upload | Angular MediaComponent, NestJS MediaModule, MinIO |
-| FR-009 | Image Quality Guidance | Angular MediaComponent (client-side) |
-| FR-010 | Submission State Workflow | NestJS ContributionsModule (state machine), PostgreSQL |
-| FR-011 | GDPR Consent Capture | Angular ConsentComponent, NestJS GdprModule, PostgreSQL |
-| FR-012 | GDPR Data Subject Deletion | NestJS GdprModule, PersonsModule, MediaModule, MinIO |
-| FR-013 | Structured Export | NestJS ExportModule, PostgreSQL, MinIO |
-| FR-014 | Print-Ready Export | NestJS ExportModule (pdfkit) |
-| FR-015 | User Account Management | Angular AdminModule, NestJS UsersModule, PostgreSQL |
-| FR-016 | Person Linking | Angular ContributionsModule, NestJS ContributionsModule |
-| FR-017 | Appointment Type Classification | Angular AdminModule, NestJS AdminModule, PostgreSQL |
-| FR-018 | Coordinator Read-Only Overview | Angular DashboardModule (coordinator view), NestJS ContributionsModule |
-| FR-019 | Real-Time Field Validation | Angular Reactive Forms (class-validator sync), NestJS ValidationPipe |
-| FR-020 | Session & Data Security | Nginx, NestJS (Helmet, ThrottlerGuard, JwtAuthGuard), Redis |
+| FR-001 | User Login | Angular AuthService (signals), Express auth.routes, Redis |
+| FR-002 | Password Reset | Angular forgot/reset components, Express auth.routes + PasswordResetService, SMTP |
+| FR-003 | School Management | Angular features/registry, Express schools.routes, PostgreSQL |
+| FR-004 | Person Management | Angular features/registry, Express persons.routes, PostgreSQL |
+| FR-005 | Contribution Creation | Angular features/contributions, Express contributions.routes, PostgreSQL |
+| FR-006 | Contribution Editing | Angular features/contributions, Express contributions.routes |
+| FR-007 | Contribution List & Status | Angular features/dashboard, Express contributions.routes |
+| FR-008 | Image Upload | Angular features/media, Express media.routes, MinIO |
+| FR-009 | Image Quality Guidance | Angular features/media (client-side) |
+| FR-010 | Submission State Workflow | Express contributions.routes (state machine), PostgreSQL |
+| FR-011 | GDPR Consent Capture | Angular consent component, Express gdpr.routes, PostgreSQL |
+| FR-012 | GDPR Data Subject Deletion | Express gdpr.routes + persons.routes, MinIO |
+| FR-013 | Structured Export | Express export.routes, PostgreSQL, MinIO |
+| FR-014 | Print-Ready Export | Express export.routes (pdfkit) |
+| FR-015 | User Account Management | Angular features/admin, Express users.routes + UsersService |
+| FR-016 | Person Linking | Angular features/contributions, Express contributions.routes |
+| FR-017 | Appointment Type Classification | Angular features/admin, Express admin.routes, PostgreSQL |
+| FR-018 | Coordinator Read-Only Overview | Angular features/dashboard (coordinator view), Express contributions.routes |
+| FR-019 | Real-Time Field Validation | Angular Reactive Forms (client-side), express-validator chains (server-side) |
+| FR-020 | Session & Data Security | Nginx, Express (helmet, express-rate-limit, authenticate middleware), Redis |
 
 ### NFR → Architecture Solution
 
 | NFR | Solution Summary |
 |-----|-----------------|
 | NFR-001 GDPR | ConsentRecord entity, anonymisation endpoint, local-only data, soft deletes |
-| NFR-002 Auth | bcrypt(12), JWT RS256, Redis refresh tokens, ThrottlerGuard, Helmet |
+| NFR-002 Auth | bcrypt(12), JWT RS256 (jsonwebtoken), Redis refresh tokens, express-rate-limit, Helmet |
 | NFR-003 Performance | Lazy loading, gzip, DB indexes, MinIO pre-signed URLs, async export |
 | NFR-004 Usability | Angular Material, single-column forms, client-side validation, plain-language errors |
 | NFR-005 Accessibility | Angular Material ARIA, axe-core CI, keyboard navigation |
@@ -976,7 +993,7 @@ On merge to main:
 | NFR-007 Availability | Docker restart policies, health checks, Uptime Kuma |
 | NFR-008 Backup | Daily pg_dump + MinIO sync, 30-day retention, tested restore runbook |
 | NFR-009 Scalability | Connection pooling, cursor pagination, Redis caching, vertical scale path |
-| NFR-010 Maintainability | TypeScript E2E, ESLint/Prettier CI, 70% unit coverage, TypeORM migrations |
+| NFR-010 Maintainability | TypeScript E2E, ESLint/Prettier CI, 70% unit coverage, node-pg-migrate migrations |
 | NFR-011 Export Stability | Versioned export schema, documented format, regression tests |
 
 ---
@@ -986,7 +1003,10 @@ On merge to main:
 | Decision | Gain | Loss | Rationale |
 |----------|------|------|-----------|
 | Modular Monolith over Microservices | Simple deployment, fast development | Harder to scale individual modules | School-scale load; single team; August deadline |
-| NestJS over Express | Structure, RBAC, validation, DI | More ceremony for simple endpoints | Level 3 complexity justifies structure |
+| Express over NestJS | Zero framework magic, full control, no reflection overhead | No built-in DI, more boilerplate per route | Product owner preference; explicit > implicit at this scale |
+| Raw pg over ORM | All SQL visible and auditable; no hidden queries or N+1 surprises | More verbose for dynamic queries | Security-sensitive app; ORM abstraction is a liability, not an asset |
+| node-pg-migrate over TypeORM migrations | Lightweight JS format; no coupling to an ORM | Slightly less ergonomic than TypeORM CLI | Follows from raw-pg choice; migrations decoupled from application code |
+| jsonwebtoken over @nestjs/jwt | Explicit RS256/HS256 sign/verify; easy to audit | No framework integration helpers | Security primitive should be transparent |
 | PostgreSQL over MongoDB | ACID, relational integrity, GDPR soft deletes | Less flexible schema | Highly relational data model; GDPR requires auditability |
 | MinIO over DB BLOBs | Performance, GDPR purge, backup separation | Additional service to operate | Images must be independently purgeable for GDPR |
 | JWT in memory (not localStorage) | XSS protection | Lost on page refresh (refresh token flow handles this) | Security > minor UX inconvenience |
