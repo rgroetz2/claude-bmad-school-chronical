@@ -1,0 +1,210 @@
+version: "6.0.0"
+project_name: "schoolCronical"
+project_level: 3
+current_sprint: 2
+sprint_plan_path: "docs/sprint-plan-schoolCronical-2026-05-02.md"
+
+team:
+  size: 1
+  experience: "senior"
+  sprint_length_weeks: 2
+  capacity_per_sprint: 30
+
+velocity:
+  sprint_1: 18
+  sprint_2: null
+  sprint_3: null
+  sprint_4: null
+  sprint_5: null
+  sprint_6: null
+  rolling_average: 18
+
+sprints:
+  - sprint_number: 1
+    start_date: "2026-05-04"
+    end_date: "2026-05-15"
+    capacity_points: 30
+    committed_points: 18
+    completed_points: 18
+    status: "completed"
+    velocity: 18
+    goal: "A working, secure application shell — developers can log in, admins can manage accounts, the full local Docker stack is running."
+    stories:
+      - story_id: "STORY-001"
+        title: "Development Environment & Docker Compose Setup"
+        points: 2
+        priority: "must_have"
+        status: "completed"
+        assigned_to: rudolfgroetz
+        completed_date: "2026-05-02"
+      - story_id: "STORY-002"
+        title: "Database Schema & TypeORM Migrations"
+        points: 3
+        priority: "must_have"
+        status: "completed"
+        assigned_to: rudolfgroetz
+        completed_date: "2026-05-02"
+      - story_id: "STORY-003"
+        title: "User Login with JWT Authentication"
+        points: 5
+        priority: "must_have"
+        status: "completed"
+        assigned_to: rudolfgroetz
+        completed_date: "2026-05-03"
+        branch: "feature/STORY-003-user-login-jwt"
+      - story_id: "STORY-004"
+        title: "Password Reset via Email"
+        points: 3
+        priority: "must_have"
+        status: "completed"
+        assigned_to: rudolfgroetz
+        completed_date: "2026-05-03"
+        branch: "feature/STORY-004-password-reset-email"
+      - story_id: "STORY-005"
+        title: "Admin Account Management"
+        points: 5
+        priority: "should_have"
+        status: "completed"
+        assigned_to: rudolfgroetz
+        completed_date: "2026-05-03"
+        branch: "feature/STORY-005-admin-account-management"
+
+  - sprint_number: 2
+    start_date: "2026-05-18"
+    end_date: "2026-05-29"
+    capacity_points: 30
+    committed_points: 21
+    completed_points: 0
+    status: "not_started"
+    goal: "Teachers can create draft contributions linked to schools, persons, and appointment types."
+    stories:
+      - story_id: "STORY-006"
+        title: "School Registry CRUD"
+        points: 5
+        priority: "must_have"
+        status: "not_started"
+        assigned_to: null
+      - story_id: "STORY-007"
+        title: "Person Registry CRUD"
+        points: 5
+        priority: "must_have"
+        status: "not_started"
+        assigned_to: null
+      - story_id: "STORY-008"
+        title: "Appointment Type Management"
+        points: 3
+        priority: "must_have"
+        status: "not_started"
+        assigned_to: null
+      - story_id: "STORY-009"
+        title: "Contribution Creation with Required Fields & Real-Time Validation"
+        points: 8
+        priority: "must_have"
+        status: "not_started"
+        assigned_to: null
+
+  - sprint_number: 3
+    start_date: "2026-06-01"
+    end_date: "2026-06-12"
+    capacity_points: 30
+    committed_points: 24
+    completed_points: 0
+    status: "not_started"
+    goal: "Teachers can complete the full contribution lifecycle — create, edit, link persons, upload images, and submit."
+    stories:
+      - story_id: "STORY-010"
+        title: "Contribution List & Status Dashboard"
+        points: 5
+        priority: "must_have"
+        status: "not_started"
+        assigned_to: null
+      - story_id: "STORY-011"
+        title: "Contribution Editing — Draft Only"
+        points: 3
+        priority: "must_have"
+        status: "not_started"
+        assigned_to: null
+      - story_id: "STORY-012"
+        title: "Person Linking to Contribution"
+        points: 3
+        priority: "must_have"
+        status: "not_started"
+        assigned_to: null
+      - story_id: "STORY-013"
+        title: "Submission State Workflow — Draft to Submitted"
+        points: 5
+        priority: "must_have"
+        status: "not_started"
+        assigned_to: null
+      - story_id: "STORY-014"
+        title: "Image Upload with Format & Size Validation"
+        points: 8
+        priority: "must_have"
+        status: "not_started"
+        assigned_to: null
+
+  - sprint_number: 4
+    start_date: "2026-06-15"
+    end_date: "2026-06-26"
+    capacity_points: 30
+    committed_points: 20
+    completed_points: 0
+    status: "not_started"
+    goal: "GDPR compliance complete; coordinator can generate structured data export."
+    stories:
+      - story_id: "STORY-015"
+        title: "Image Quality Guidance UI"
+        points: 2
+        priority: "should_have"
+        status: "not_started"
+        assigned_to: null
+      - story_id: "STORY-016"
+        title: "GDPR Consent Capture on Image Upload"
+        points: 5
+        priority: "must_have"
+        status: "not_started"
+        assigned_to: null
+      - story_id: "STORY-017"
+        title: "GDPR Data Subject Anonymisation"
+        points: 5
+        priority: "must_have"
+        status: "not_started"
+        assigned_to: null
+      - story_id: "STORY-018"
+        title: "Structured Data Export"
+        points: 8
+        priority: "must_have"
+        status: "not_started"
+        assigned_to: null
+
+  - sprint_number: 5
+    start_date: "2026-06-29"
+    end_date: "2026-07-10"
+    capacity_points: 30
+    committed_points: 13
+    completed_points: 0
+    status: "not_started"
+    goal: "Print-ready PDF export available; coordinator has full submission overview."
+    stories:
+      - story_id: "STORY-019"
+        title: "Print-Ready PDF Export"
+        points: 8
+        priority: "should_have"
+        status: "not_started"
+        assigned_to: null
+      - story_id: "STORY-020"
+        title: "Coordinator Read-Only Overview"
+        points: 5
+        priority: "could_have"
+        status: "not_started"
+        assigned_to: null
+
+  - sprint_number: 6
+    start_date: "2026-07-13"
+    end_date: "2026-07-24"
+    capacity_points: 30
+    committed_points: 0
+    completed_points: 0
+    status: "not_started"
+    goal: "Production-ready system validated, documented, and deployable. No new features — hardening and launch preparation only."
+    stories: []

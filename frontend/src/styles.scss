@@ -1,0 +1,61 @@
+// Angular Material theme
+@use '@angular/material' as mat;
+
+@include mat.core();
+
+$primary: mat.define-palette(mat.$indigo-palette);
+$accent: mat.define-palette(mat.$amber-palette, A200, A100, A400);
+$warn: mat.define-palette(mat.$red-palette);
+
+$theme: mat.define-light-theme((
+  color: (
+    primary: $primary,
+    accent: $accent,
+    warn: $warn,
+  ),
+  typography: mat.define-typography-config(),
+  density: 0,
+));
+
+@include mat.all-component-themes($theme);
+
+// Global reset & base styles
+html,
+body {
+  height: 100%;
+  margin: 0;
+  font-family: Roboto, 'Helvetica Neue', sans-serif;
+  background-color: #f5f5f5;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+// Utility: full-page centered layout (used by login page)
+.page-center {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 100vh;
+  padding: 16px;
+}
+
+// Global snack-bar colours
+.snack-success {
+  background-color: #2e7d32 !important;
+  color: #ffffff !important;
+
+  .mat-mdc-button.mat-mdc-snack-bar-action {
+    color: #a5d6a7 !important;
+  }
+}
+
+.snack-error {
+  background-color: #c62828 !important;
+  color: #ffffff !important;
+
+  .mat-mdc-button.mat-mdc-snack-bar-action {
+    color: #ef9a9a !important;
+  }
+}

@@ -1,0 +1,138 @@
+.admin-users-page {
+  max-width: 1100px;
+  margin: 0 auto;
+  padding: 24px 16px;
+}
+
+.page-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  margin-bottom: 24px;
+  flex-wrap: wrap;
+  gap: 16px;
+}
+
+.page-title {
+  margin: 0 0 4px;
+  font-size: 24px;
+  font-weight: 500;
+}
+
+.page-subtitle {
+  margin: 0;
+  color: rgba(0, 0, 0, 0.6);
+  font-size: 14px;
+}
+
+// ── Create form ─────────────────────────────────────────────────────────────
+
+.create-card {
+  margin-bottom: 24px;
+}
+
+.create-form {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0 16px;
+  margin-top: 8px;
+
+  @media (max-width: 600px) {
+    grid-template-columns: 1fr;
+  }
+
+  mat-form-field {
+    width: 100%;
+  }
+}
+
+.form-actions {
+  grid-column: 1 / -1;
+  display: flex;
+  justify-content: flex-end;
+  padding-top: 8px;
+
+  button {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+}
+
+// ── Table ────────────────────────────────────────────────────────────────────
+
+.table-card {
+  padding: 0;
+  overflow: hidden;
+}
+
+.users-table {
+  width: 100%;
+}
+
+.loading-state,
+.empty-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 48px 16px;
+  color: rgba(0, 0, 0, 0.5);
+  gap: 16px;
+
+  mat-icon {
+    font-size: 48px;
+    width: 48px;
+    height: 48px;
+  }
+
+  p {
+    margin: 0;
+    font-size: 15px;
+  }
+}
+
+.username {
+  font-weight: 500;
+}
+
+.role-select {
+  min-width: 160px;
+  font-size: 14px;
+}
+
+.inactive-row {
+  opacity: 0.55;
+}
+
+// ── Badges ───────────────────────────────────────────────────────────────────
+
+.badge {
+  display: inline-block;
+  padding: 2px 8px;
+  border-radius: 12px;
+  font-size: 12px;
+  font-weight: 500;
+  line-height: 18px;
+}
+
+.badge-active {
+  background-color: #e8f5e9;
+  color: #2e7d32;
+}
+
+.badge-inactive {
+  background-color: #fce8e8;
+  color: #b71c1c;
+}
+
+.badge-warn {
+  background-color: #fff8e1;
+  color: #f57f17;
+  margin-left: 6px;
+  font-size: 10px;
+  cursor: default;
+}
+
+// ── Global snack-bar colours (added to global styles via ViewEncapsulation.None) ──
+// Note: also add .snack-error / .snack-success to styles.scss

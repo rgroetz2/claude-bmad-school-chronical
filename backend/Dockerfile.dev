@@ -1,0 +1,13 @@
+# Development image — hot reload with ts-node/nest watch
+FROM node:20-alpine
+
+WORKDIR /app
+
+# Install dependencies first for layer caching
+COPY package*.json ./
+RUN npm install
+
+# Source is mounted as volume at runtime (docker-compose.dev.yml)
+EXPOSE 3000
+
+CMD ["npm", "run", "start:dev"]

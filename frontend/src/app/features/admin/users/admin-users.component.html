@@ -1,0 +1,194 @@
+<div class="admin-users-page">
+
+  <!-- Page header -->
+  <div class="page-header">
+    <div>
+      <h1 class="page-title">Benutzerverwaltung</h1>
+      <p class="page-subtitle">Konten erstellen, deaktivieren und verwalten</p>
+    </div>
+    <button mat-raised-button color="primary" (click)="toggleCreateForm()">
+      <mat-icon>{{ showCreateForm() ? 'close' : 'person_add' }}</mat-icon>
+      {{ showCreateForm() ? 'Abbrechen' : 'Neues Konto' }}
+    </button>
+  </div>
+
+  <!-- Create user form -->
+  @if (showCreateForm()) {
+    <mat-card class="create-card">
+      <mat-card-header>
+        <mat-card-title>Neues Benutzerkonto</mat-card-title>
+        <mat-card-subtitle>
+          Beim ersten Login wird das Passwort vom Benutzer geändert.
+        </mat-card-subtitle>
+      </mat-card-header>
+      <mat-card-content>
+        <form [formGroup]="createForm" (ngSubmit)="onCreateUser()" novalidate class="create-form">
+
+          <mat-form-field appearance="outline">
+            <mat-label>Benutzername</mat-label>
+            <input matInput formControlName="username" autocomplete="off" placeholder="z.B. m.mustermann" />
+            <mat-icon matPrefix>person</mat-icon>
+            @if (createForm.get('username')!.hasError('required') && createForm.get('username')!.touched) {
+              <mat-error>Benutzername ist erforderlich.</mat-error>
+            }
+            @if (createForm.get('username')!.hasError('pattern') && createForm.get('username')!.touched) {
+              <mat-error>Nur Buchstaben, Ziffern, Punkte, _ und - erlaubt.</mat-error>
+            }
+            @if (createForm.get('username')!.hasError('minlength') && createForm.get('username')!.touched) {
+              <mat-error>Mindestens 3 Zeichen.</mat-error>
+            }
+          </mat-form-field>
+
+          <mat-form-field appearance="outline">
+            <mat-label>E-Mail-Adresse</mat-label>
+            <input matInput formControlName="email" type="email" autocomplete="off" placeholder="m.mustermann@schule.de" />
+            <mat-icon matPrefix>email</mat-icon>
+            @if (createForm.get('email')!.hasError('required') && createForm.get('email')!.touched) {
+              <mat-error>E-Mail ist erforderlich.</mat-error>
+            }
+            @if (createForm.get('email')!.hasError('email') && createForm.get('email')!.touched) {
+              <mat-error>Gültige E-Mail-Adresse eingeben.</mat-error>
+            }
+          </mat-form-field>
+
+          <mat-form-field appearance="outline">
+            <mat-label>Temporäres Passwort</mat-label>
+            <input matInput formControlName="temporaryPassword" type="text" autocomplete="new-password" placeholder="Mindestens 8 Zeichen" />
+            <mat-icon matPrefix>lock</mat-icon>
+            <mat-hint>Der Benutzer muss es beim ersten Login ändern.</mat-hint>
+            @if (createForm.get('temporaryPassword')!.hasError('required') && createForm.get('temporaryPassword')!.touched) {
+              <mat-error>Temporäres Passwort ist erforderlich.</mat-error>
+            }
+            @if (createForm.get('temporaryPassword')!.hasError('minlength') && createForm.get('temporaryPassword')!.touched) {
+              <mat-error>Mindestens 8 Zeichen.</mat-error>
+            }
+          </mat-form-field>
+
+          <mat-form-field appearance="outline">
+            <mat-label>Rolle</mat-label>
+            <mat-select formControlName="role">
+              @for (opt of roleOptions; track opt.value) {
+                <mat-option [value]="opt.value">{{ opt.label }}</mat-option>
+              }
+            </mat-select>
+            <mat-icon matPrefix>badge</mat-icon>
+          </mat-form-field>
+
+          <div class="form-actions">
+            <button
+              mat-raised-button
+              color="primary"
+              type="submit"
+              [disabled]="createForm.invalid || createLoading()"
+            >
+              @if (createLoading()) {
+                <mat-spinner diameter="18"></mat-spinner>
+                Erstellen ...
+              } @else {
+                <mat-icon>save</mat-icon>
+                Konto erstellen
+              }
+            </button>
+          </div>
+
+        </form>
+      </mat-card-content>
+    </mat-card>
+  }
+
+  <!-- Users table -->
+  <mat-card class="table-card">
+    @if (loading()) {
+      <div class="loading-state">
+        <mat-spinner diameter="40"></mat-spinner>
+        <p>Benutzer werden geladen ...</p>
+      </div>
+    } @else if (users().length === 0) {
+      <div class="empty-state">
+        <mat-icon>group_off</mat-icon>
+        <p>Noch keine Benutzer vorhanden.</p>
+      </div>
+    } @else {
+      <table mat-table [dataSource]="users()" class="users-table">
+
+        <!-- Username -->
+        <ng-container matColumnDef="username">
+          <th mat-header-cell *matHeaderCellDef>Benutzername</th>
+          <td mat-cell *matCellDef="let user">
+            <span class="username">{{ user.username }}</span>
+            @if (user.forcePasswordChange) {
+              <span class="badge badge-warn" matTooltip="Muss Passwort ändern">PW</span>
+            }
+          </td>
+        </ng-container>
+
+        <!-- Email -->
+        <ng-container matColumnDef="email">
+          <th mat-header-cell *matHeaderCellDef>E-Mail</th>
+          <td mat-cell *matCellDef="let user">{{ user.email }}</td>
+        </ng-container>
+
+        <!-- Role (editable) -->
+        <ng-container matColumnDef="role">
+          <th mat-header-cell *matHeaderCellDef>Rolle</th>
+          <td mat-cell *matCellDef="let user">
+            <mat-select
+              [value]="user.role"
+              (selectionChange)="onChangeRole(user, $event.value)"
+              class="role-select"
+            >
+              @for (opt of roleOptions; track opt.value) {
+                <mat-option [value]="opt.value">{{ opt.label }}</mat-option>
+              }
+            </mat-select>
+          </td>
+        </ng-container>
+
+        <!-- Status -->
+        <ng-container matColumnDef="status">
+          <th mat-header-cell *matHeaderCellDef>Status</th>
+          <td mat-cell *matCellDef="let user">
+            <span
+              class="badge"
+              [class.badge-active]="user.isActive"
+              [class.badge-inactive]="!user.isActive"
+            >
+              {{ user.isActive ? 'Aktiv' : 'Deaktiviert' }}
+            </span>
+          </td>
+        </ng-container>
+
+        <!-- Actions -->
+        <ng-container matColumnDef="actions">
+          <th mat-header-cell *matHeaderCellDef>Aktionen</th>
+          <td mat-cell *matCellDef="let user">
+            <button
+              mat-icon-button
+              [matTooltip]="user.isActive ? 'Konto deaktivieren' : 'Konto aktivieren'"
+              (click)="onToggleActive(user)"
+              [color]="user.isActive ? 'warn' : 'primary'"
+            >
+              <mat-icon>{{ user.isActive ? 'person_off' : 'person' }}</mat-icon>
+            </button>
+            <button
+              mat-icon-button
+              matTooltip="Passwort-Reset-E-Mail senden"
+              (click)="onResetPassword(user)"
+              [disabled]="!user.isActive"
+            >
+              <mat-icon>lock_reset</mat-icon>
+            </button>
+          </td>
+        </ng-container>
+
+        <tr mat-header-row *matHeaderRowDef="displayedColumns"></tr>
+        <tr
+          mat-row
+          *matRowDef="let row; columns: displayedColumns"
+          [class.inactive-row]="!row.isActive"
+        ></tr>
+      </table>
+    }
+  </mat-card>
+
+</div>
